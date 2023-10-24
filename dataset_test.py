@@ -6,8 +6,6 @@ import torch
 import ssl
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
-
-
 class METRLADatasetLoader(object):
     """A traffic forecasting dataset based on Los Angeles
     Metropolitan traffic conditions. The dataset contains traffic
@@ -59,7 +57,7 @@ class METRLADatasetLoader(object):
         X = np.load(os.path.join(self.raw_data_dir, "node_values.npy")).transpose(
             (1, 2, 0)
         )
-        print(X.size);
+#         print(X.size);
         X = X.astype(np.float32)
 
         # Normalise as in DCRNN paper (via Z-Score Method)
@@ -98,7 +96,7 @@ class METRLADatasetLoader(object):
         features, target = [], []
         for i, j in indices:
             features.append((self.X[:, :, i : i + num_timesteps_in]).numpy())
-            target.append((self.X[:, 0, i + num_timesteps_in : j]).numpy())
+            target.append((self.X[:, :, i + num_timesteps_in : j]).numpy())
 
         self.features = features
         self.targets = target
