@@ -1,9 +1,7 @@
 import os
-import urllib
 import zipfile
 import numpy as np
 import torch
-import ssl
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 class METRLADatasetLoader(object):
@@ -21,43 +19,24 @@ class METRLADatasetLoader(object):
     def __init__(self, raw_data_dir=os.path.join(os.getcwd(), "data")):
         super(METRLADatasetLoader, self).__init__()
         self.raw_data_dir = raw_data_dir
-        self._read_web_data()
+        self._read_data()
 
-    def _download_url(self, url, save_path):  # pragma: no cover
-        ctx = ssl.create_default_context();
-        ctx.check_hostname = False;
-        ctx.verify_mode = ssl.CERT_NONE;
-        with urllib.request.urlopen(url, context=ctx) as dl_file:
-            with open(save_path, "wb") as out_file:
-                out_file.write(dl_file.read())
-
-    def _read_web_data(self):
-        # url = "https://graphmining.ai/temporal_datasets/METR-LA.zip"
-
-        # # Check if zip file is in data folder from working directory, otherwise download
-        # if not os.path.isfile(
-        #     os.path.join(self.raw_data_dir, "METR-LA.zip")
-        # ):  # pragma: no cover
-        #     if not os.path.exists(self.raw_data_dir):
-        #         os.makedirs(self.raw_data_dir)
-        #     self._download_url(url, os.path.join(self.raw_data_dir, "METR-LA.zip"))
-
-        # if not os.path.isfile(
-        #     os.path.join(self.raw_data_dir, "adj_mat.npy")
-        # ) or not os.path.isfile(
-        #     os.path.join(self.raw_data_dir, "node_values.npy")
-        # ):  # pragma: no cover
-        #     with zipfile.ZipFile(
-        #         os.path.join(self.raw_data_dir, "METR-LA.zip"), "r"
-        #     ) as zip_fh:
-        #         zip_fh.extractall(self.raw_data_dir)
-
+    def _read_data(self):
+        # Check if zip file is extracted, otherwise extract
+        if not os.path.isfile(
+            os.path.join(self.raw_data_dir, "adj_mat.npy")
+        ) or not os.path.isfile(
+            os.path.join(self.raw_data_dir, "node_values.npy")
+        ):  # pragma: no cover
+            with zipfile.ZipFile(
+                os.path.join(self.raw_data_dir, "METR-LA.zip"), "r"
+            ) as zip_fh:
+                zip_fh.extractall(self.raw_data_dir)
 
         A = np.load(os.path.join(self.raw_data_dir, "adj_mat.npy"))
         X = np.load(os.path.join(self.raw_data_dir, "node_values.npy")).transpose(
             (1, 2, 0)
         )
-#         print(X.size);
         X = X.astype(np.float32)
 
         # Normalise as in DCRNN paper (via Z-Score Method)
