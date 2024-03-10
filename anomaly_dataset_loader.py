@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
+from random import randrange
 
 class METRLADatasetLoader(object):
     """A traffic forecasting dataset based on Los Angeles
@@ -38,23 +39,44 @@ class METRLADatasetLoader(object):
         X = np.load(os.path.join(self.raw_data_dir, "node_values.npy")).transpose(
             (1, 2, 0)
         )
+
         X = X.astype(np.float32)
 
+        X = self._anomaly_injection(X, 50)
+
         self._normalise_data(X, A)
+
+
+    def _anomaly_injection(self, X, anomaly_duration):
+        max_speed = []
+        min_speed = []
+
+        for sensor in range(len(X)):
+                max_speed.append(max(X[sensor][0]))
+                min_speed.append(min(X[sensor][0]))
+
+        print("Done calculating max and min speeds bro")
+
+        for timestep in range(0, len(X[0][0]), 400):
+            for current_timestep in range(timestep, timestep + anomaly_duration) :
+                for sensor in range(0, len(X)):
+                    X[sensor][0][current_timestep] = self._get_anomaly(sensor, max_speed, min_speed)
+
+            print("Done one part bro")
+
+        return X
+
+
+    def _get_anomaly(self, sensor, max_speed, min_speed):
+        if(randrange(0, 2)):
+            return max_speed[sensor] + randrange(5, 11);
+        else:
+            return max(min_speed[sensor] - randrange(5, 11), 0)
 
     def _normalise_data(self, X, A):
         # Normalise as in DCRNN paper (via Z-Score Method)
         means = np.mean(X, axis=(0, 2))
         stds = np.std(X, axis=(0, 2))
-
-        max_speed = list(max(x[0][i] for x in X) for i in range(len(X)))
-        min_speed = list(min(x[0][i] for x in X) for i in range(len(X)))
-
-        norm_max_speed = list(((x - means[0]) / stds[0]) for x in max_speed)
-        norm_min_speed = list(((x - means[0]) / stds[0]) for x in min_speed)
-
-        self.norm_max_speed_anom = np.array(list((x + (5 / stds[0]), x + (10 / stds[0])) for x in norm_max_speed))
-        self.norm_min_speed_anom = np.array(list((x - (10 / stds[0]), x - (5 / stds[0])) for x in norm_min_speed))
 
         X = X - means.reshape(1, -1, 1)
         X = X / stds.reshape(1, -1, 1)
@@ -96,7 +118,7 @@ class METRLADatasetLoader(object):
 
     def get_dataset(
         self, num_timesteps_in: int = 12, num_timesteps_out: int = 12
-    ):
+    ) -> StaticGraphTemporalSignal:
         """Returns data iterator for METR-LA dataset as an instance of the
         static graph temporal signal class.
 
@@ -110,6 +132,7 @@ class METRLADatasetLoader(object):
             self.edges, self.edge_weights, self.features, self.targets
         )
 
-        return dataset, self.norm_max_speed_anom, self.norm_min_speed_anom
+        return dataset
 
-loader = METRLADatasetLoader()
+dataset = METRLADatasetLoader().get_dataset()
+
