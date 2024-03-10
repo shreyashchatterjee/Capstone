@@ -55,14 +55,12 @@ class METRLADatasetLoader(object):
                 max_speed.append(max(X[sensor][0]))
                 min_speed.append(min(X[sensor][0]))
 
-        print("Done calculating max and min speeds bro")
 
         for timestep in range(0, len(X[0][0]), 400):
             for current_timestep in range(timestep, timestep + anomaly_duration) :
                 for sensor in range(0, len(X)):
                     X[sensor][0][current_timestep] = self._get_anomaly(sensor, max_speed, min_speed)
 
-            print("Done one part bro")
 
         return X
 
