@@ -18,10 +18,11 @@ class METRLADatasetLoader(object):
     Data-Driven Traffic Forecasting" <https://arxiv.org/abs/1707.01926>`_
     """
 
-    def __init__(self, raw_data_dir=os.path.join(os.getcwd(), "data")):
+    def __init__(self, anomaly_duration ,raw_data_dir=os.path.join(os.getcwd(), "data")):
         super(METRLADatasetLoader, self).__init__()
         self.raw_data_dir = raw_data_dir
-        self._read_data()
+        self.anomaly_duration = anomaly_duration
+        self._read_data()  
 
     def _read_data(self):
         # Check if zip file is extracted, otherwise extract
@@ -42,12 +43,15 @@ class METRLADatasetLoader(object):
 
         X = X.astype(np.float32)
 
-        X = self._anomaly_injection(X, 50)
+        X = self._anomaly_injection(X)
 
         self._normalise_data(X, A)
 
 
-    def _anomaly_injection(self, X, anomaly_duration):
+    def _anomaly_injection(self, X):
+        self.dataset_size = len(X[0][0])
+        anomaly_duration = self.anomaly_duration
+
         max_speed = []
         min_speed = []
 
@@ -55,12 +59,13 @@ class METRLADatasetLoader(object):
                 max_speed.append(max(X[sensor][0]))
                 min_speed.append(min(X[sensor][0]))
 
+        self.anomaly_count = 0
 
-        for timestep in range(0, len(X[0][0]), 400):
+        for timestep in range(400, len(X[0][0]), 400):
             for current_timestep in range(timestep, timestep + anomaly_duration) :
                 for sensor in range(0, len(X)):
+                    self.anomaly_count += 1
                     X[sensor][0][current_timestep] = self._get_anomaly(sensor, max_speed, min_speed)
-
 
         return X
 
@@ -115,7 +120,7 @@ class METRLADatasetLoader(object):
         self.targets = target
 
     def get_dataset(
-        self, num_timesteps_in: int = 12, num_timesteps_out: int = 12
+        self,num_timesteps_in: int = 12, num_timesteps_out: int = 12
     ) -> StaticGraphTemporalSignal:
         """Returns data iterator for METR-LA dataset as an instance of the
         static graph temporal signal class.
@@ -130,7 +135,7 @@ class METRLADatasetLoader(object):
             self.edges, self.edge_weights, self.features, self.targets
         )
 
-        return dataset
+        return dataset, self.anomaly_count, self.dataset_size
 
-dataset = METRLADatasetLoader().get_dataset()
+dataset, anomaly_count, dataset_size = METRLADatasetLoader(50).get_dataset()
 
