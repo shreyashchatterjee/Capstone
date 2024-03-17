@@ -2,6 +2,7 @@ import os
 import zipfile
 import numpy as np
 import torch
+from scipy.interpolate import interp1d
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from random import randrange
@@ -22,7 +23,7 @@ class METRLADatasetLoader(object):
         super(METRLADatasetLoader, self).__init__()
         self.raw_data_dir = raw_data_dir
         self.anomaly_duration = anomaly_duration
-        self._read_data()  
+        self._read_data()
 
     def _read_data(self):
         # Check if zip file is extracted, otherwise extract
@@ -49,20 +50,27 @@ class METRLADatasetLoader(object):
 
 
     def _anomaly_injection(self, X):
+        for sensor in range(len(X)):
+            y = X[sensor][0]
+            idx = np.nonzero(y)
+            if len(idx[0]) != len(y):
+                x = np.arange(len(y))
+                LinearInterp = interp1d(x[idx], y[idx], fill_value='extrapolate')
+                X[sensor][0] = LinearInterp(x)
+
         self.dataset_size = len(X[0][0])
-        anomaly_duration = self.anomaly_duration
 
         max_speed = []
         min_speed = []
 
         for sensor in range(len(X)):
-                max_speed.append(max(X[sensor][0]))
-                min_speed.append(min(X[sensor][0]))
+            max_speed.append(max(X[sensor][0]))
+            min_speed.append(min(X[sensor][0]))
 
         self.anomaly_count = 0
 
         for timestep in range(400, len(X[0][0]), 400):
-            for current_timestep in range(timestep, timestep + anomaly_duration) :
+            for current_timestep in range(timestep, timestep + self.anomaly_duration) :
                 for sensor in range(0, len(X)):
                     self.anomaly_count += 1
                     X[sensor][0][current_timestep] = self._get_anomaly(sensor, max_speed, min_speed)
@@ -138,4 +146,3 @@ class METRLADatasetLoader(object):
         return dataset, self.anomaly_count, self.dataset_size
 
 dataset, anomaly_count, dataset_size = METRLADatasetLoader(50).get_dataset()
-
