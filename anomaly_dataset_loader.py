@@ -59,6 +59,7 @@ class METRLADatasetLoader(object):
                 X[sensor][0] = LinearInterp(x)
 
         self.dataset_size = len(X[0][0])
+        # self.dataset_size = 2000
 
         max_speed = []
         min_speed = []
@@ -69,10 +70,10 @@ class METRLADatasetLoader(object):
 
         self.anomaly_count = 0
 
-        for timestep in range(400, len(X[0][0]), 400):
+        for timestep in range(200, 2000, 200):  #Injecting anomalies for the first 2000 timestamps
             for current_timestep in range(timestep, timestep + self.anomaly_duration) :
+                self.anomaly_count += 1
                 for sensor in range(0, len(X)):
-                    self.anomaly_count += 1
                     X[sensor][0][current_timestep] = self._get_anomaly(sensor, max_speed, min_speed)
 
         return X
